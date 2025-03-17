@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import logging
 
+from chart import create_chart
+
 
 # initialize logger
 def init_logger():
@@ -40,10 +42,28 @@ def load_data(file_name):
     return labels, features
 
 
+def export_to_csv(accuracy_percentages, feature_set_labels, title, filename):
+    # create a DataFrame with the data
+    df = pd.DataFrame({
+        'Feature Set': feature_set_labels,
+        'Accuracy (%)': accuracy_percentages
+    })
+
+    # add a comment row with the title (Google Sheets will ignore this)
+    with open(filename, 'w') as f:
+        f.write(f"# {title}\n")
+
+    # append the actual data to the CSV file
+    df.to_csv(filename, index=False, mode='a')
+    logger.info(f"Data exported to {filename} successfully")
+
+
 # calculate Euclidean distance between 2 points
 def euclidean_distance(point1, point2):
     return np.sqrt(np.sum((point1 - point2) ** 2))
 
+def calculate_accuracy(actual):
+    return actual * 100
 
 def leave_one_out_cross_validation(labels, features, current_set_of_features, feature_considered):
     # make a copy of features
@@ -104,20 +124,28 @@ def leave_one_out_cross_validation(labels, features, current_set_of_features, fe
     return number_correctly_classified / num_of_instances
 
 
-def forward_selection(labels, features):
+def forward_selection(labels, features, dataset_type):
     # initialize empty set of current features
     current_set_of_features = []
     # initialize empty set of best overall features
     best_overall_set_of_features = []
     # overall accuracy of best overall features
-    best_overall_accuracy = leave_one_out_cross_validation(labels, features, current_set_of_features, None)
+    best_overall_accuracy = calculate_accuracy(leave_one_out_cross_validation(labels, features, current_set_of_features, None))
     # number of features in dataset
     num_of_features = features.shape[1]
+
+    # store accuracy at each level for plotting
+    all_accuracies = []
+    feature_sets = []
+    feature_set_labels = []
+    all_accuracies.append(best_overall_accuracy)
+    feature_sets.append([])
+    feature_set_labels.append("{}") # used for plotting the chart
 
     # calculate accuracy of empty set of features
     logger.info(f"\nBeginning Forward Selection search")
     logger.info(
-        f"Accuracy of current feature set {[f + 1 for f in current_set_of_features]}: {100 * best_overall_accuracy:.2f}%")
+        f"Accuracy of current feature set {[f + 1 for f in current_set_of_features]}: {best_overall_accuracy:.2f}%")
 
     # loop through features
     for i in range(num_of_features):
@@ -132,8 +160,8 @@ def forward_selection(labels, features):
             # if k feature is not already in current set of features, consider adding it
             if k not in current_set_of_features:
                 # measure accuracy if you added k
-                accuracy = leave_one_out_cross_validation(labels, features, current_set_of_features, k)
-                logger.info(f"--Considering adding the {k + 1} feature. Accuracy is {100 * accuracy:.2f}%")
+                accuracy = calculate_accuracy(leave_one_out_cross_validation(labels, features, current_set_of_features, k))
+                logger.info(f"--Considering adding the {k + 1} feature. Accuracy is {accuracy:.2f}%")
 
                 if accuracy > best_accuracy_at_current_level:
                     # update best accuracy at current level
@@ -144,7 +172,12 @@ def forward_selection(labels, features):
         # add k feature to current set of features
         current_set_of_features.append(feature_to_add_at_this_level)
         logger.info(f"On level {i + 1}, I added feature {feature_to_add_at_this_level + 1} to current set")
-        logger.info(f"Accuracy of current feature set {[f + 1 for f in current_set_of_features]}: {100*best_accuracy_at_current_level:.2f}%")
+        logger.info(f"Accuracy of current feature set {[f + 1 for f in current_set_of_features]}: {best_accuracy_at_current_level:.2f}%")
+
+        # store for plotting
+        all_accuracies.append(best_accuracy_at_current_level)
+        feature_sets.append(current_set_of_features.copy())
+        feature_set_labels.append("{" + ",".join(str(f+1) for f in current_set_of_features) + "}")
 
         # track best overall feature set
         if best_accuracy_at_current_level > best_overall_accuracy:
@@ -154,12 +187,22 @@ def forward_selection(labels, features):
             logger.info("WARNING: Accuracy has decreased. Continuing search in case of local maxima")
 
     logger.info(f"\nBest set of features: {[f + 1 for f in best_overall_set_of_features]}")
-    logger.info(f"Overall accuracy: {100*best_overall_accuracy:.2f}%")
+    logger.info(f"Overall accuracy: {best_overall_accuracy:.2f}%")
+
+    # export to csv file
+    title = 'Accuracy of increasingly large subsets of features discovered by forward selection'
+    xlabel = 'Current Feature Set: Forward Selection'
+    ylabel = 'Accuracy (%)'
+    csv_file = f'data/forward_selection_results_{dataset_type}.csv'
+    chart_file = csv_file.replace('.csv', '_chart.png')
+    export_to_csv(all_accuracies, feature_set_labels, title, csv_file)
+    # export to chart
+    create_chart(all_accuracies, feature_set_labels, title, xlabel, ylabel, chart_file)
 
     return best_overall_set_of_features
 
 
-def backward_elimination(labels, features):
+def backward_elimination(labels, features, dataset_type):
     # number of features in dataset
     num_of_features = features.shape[1]
     # initialize full set of current features
@@ -167,11 +210,20 @@ def backward_elimination(labels, features):
     # initialize set of best overall features, copying current set
     best_overall_set_of_features = current_set_of_features.copy()
     # overall accuracy of all features
-    best_overall_accuracy = leave_one_out_cross_validation(labels, features, current_set_of_features, None)
+    best_overall_accuracy = calculate_accuracy(leave_one_out_cross_validation(labels, features, current_set_of_features, None))
+
+    # store accuracy at each level for plotting
+    all_accuracies = []
+    feature_sets = []
+    feature_set_labels = []
+    # store initial state for plotting
+    all_accuracies.append(best_overall_accuracy)
+    feature_sets.append(current_set_of_features.copy())
+    feature_set_labels.append("{" + ",".join(str(f+1) for f in current_set_of_features) + "}")
 
     # calculate accuracy of full set of features
     logger.info(f"\nBeginning Backward Elimination search")
-    logger.info(f"Accuracy of current feature set {[f + 1 for f in current_set_of_features]}: {100 * best_overall_accuracy:.2f}%")
+    logger.info(f"Accuracy of current feature set {[f + 1 for f in current_set_of_features]}: {best_overall_accuracy:.2f}%")
 
     # loop backwards through search tree
     for i in range(num_of_features, 0, -1):
@@ -186,8 +238,8 @@ def backward_elimination(labels, features):
             # if k feature is already in current set of features, consider removing it
             if k in current_set_of_features:
                 # measure accuracy if you removed k
-                accuracy = leave_one_out_cross_validation(labels, features, current_set_of_features, k)
-                logger.info(f"--Considering removing the {k + 1} feature. Accuracy is {100 * accuracy:.2f}%")
+                accuracy = calculate_accuracy(leave_one_out_cross_validation(labels, features, current_set_of_features, k))
+                logger.info(f"--Considering removing the {k + 1} feature. Accuracy is {accuracy:.2f}%")
 
                 if accuracy > best_accuracy_at_current_level:
                     # update best accuracy at current level
@@ -198,7 +250,12 @@ def backward_elimination(labels, features):
         # add k feature to current set of features
         current_set_of_features.remove(feature_to_remove_at_this_level)
         logger.info(f"On level {i}, I removed feature {feature_to_remove_at_this_level + 1} from current set")
-        logger.info(f"Accuracy of current feature set {[f + 1 for f in current_set_of_features]}: {100 * best_accuracy_at_current_level:.2f}%")
+        logger.info(f"Accuracy of current feature set {[f + 1 for f in current_set_of_features]}: {best_accuracy_at_current_level:.2f}%")
+
+        # store for plotting
+        all_accuracies.append(best_accuracy_at_current_level)
+        feature_sets.append(current_set_of_features.copy())
+        feature_set_labels.append("{" + ",".join(str(f+1) for f in current_set_of_features) + "}" if current_set_of_features else "{}")
 
         # track best overall feature set
         if best_accuracy_at_current_level > best_overall_accuracy:
@@ -208,7 +265,17 @@ def backward_elimination(labels, features):
             logger.info("WARNING: Accuracy has decreased. Continuing search in case of local maxima")
 
     logger.info(f"\nBest set of features: {[f + 1 for f in best_overall_set_of_features]}")
-    logger.info(f"Overall accuracy: {100 * best_overall_accuracy:.2f}%")
+    logger.info(f"Overall accuracy: {best_overall_accuracy:.2f}%")
+
+    # export to csv file
+    title = 'Accuracy of increasingly small subsets of features discovered by backward elimination'
+    xlabel = 'Current Feature Set: Backward Elimination'
+    ylabel = 'Accuracy (%)'
+    csv_file = f'data/backward_elimination_results_{dataset_type}.csv'
+    chart_file = csv_file.replace('.csv', '_chart.png')
+    export_to_csv(all_accuracies, feature_set_labels, title, csv_file)
+    # export to chart
+    create_chart(all_accuracies, feature_set_labels, title, xlabel, ylabel, chart_file)
 
     return best_overall_set_of_features
 
@@ -227,11 +294,13 @@ def main():
         # load the corresponding dataset
         if choice == '1':
             labels, features = load_data(small_data)
+            dataset_type = 'small'
             logger.info(f"\nSmall dataset loaded successfully. Dataset contains {features.shape[0]} instances "
                   f"and {features.shape[1]} features (not including the class attribute).")
             break
         elif choice == '2':
             labels, features = load_data(large_data)
+            dataset_type = 'large'
             logger.info(f"\nLarge dataset loaded successfully. Dataset contains {features.shape[0]} instances "
                   f"and {features.shape[1]} features (not including the class attribute).")
             break
@@ -251,10 +320,10 @@ def main():
         start_time = time.time()
         # execute corresponding search
         if choice == '1':
-            forward_selection(labels, features)
+            forward_selection(labels, features, dataset_type)
             break
         elif choice == '2':
-            backward_elimination(labels, features)
+            backward_elimination(labels, features, dataset_type)
             break
         else:
             # ask again for user input if invalid
