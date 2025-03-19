@@ -175,6 +175,14 @@ def forward_selection(labels, features, dataset_type):
 
         # add k feature to current set of features
         current_set_of_features.append(feature_to_add_at_this_level)
+
+        # track best overall feature set
+        if best_accuracy_at_current_level > best_overall_accuracy:
+            best_overall_accuracy = best_accuracy_at_current_level
+            best_overall_set_of_features = current_set_of_features.copy()
+        elif best_accuracy_at_current_level < best_overall_accuracy and i != num_of_features - 1 and i != 0:
+            logger.info("(Warning, Accuracy has decreased! Continuing search in case of local maxima)")
+
         if i < num_of_features - 1:
             print_best_set = {f + 1 for f in current_set_of_features}
             logger.info(f"Feature set {print_best_set} was the best, accuracy is {best_accuracy_at_current_level:.1f}%")
@@ -183,11 +191,6 @@ def forward_selection(labels, features, dataset_type):
         all_accuracies.append(best_accuracy_at_current_level)
         feature_sets.append(current_set_of_features.copy())
         feature_set_labels.append("{" + ",".join(str(f+1) for f in current_set_of_features) + "}")
-
-        # track best overall feature set
-        if best_accuracy_at_current_level > best_overall_accuracy:
-            best_overall_accuracy = best_accuracy_at_current_level
-            best_overall_set_of_features = current_set_of_features.copy()
 
     print_best_set = {f + 1 for f in best_overall_set_of_features}
     logger.info(f"Finished search!! The best feature subset is {print_best_set}, which has an accuracy of {best_overall_accuracy:.1f}%")
@@ -257,20 +260,22 @@ def backward_elimination(labels, features, dataset_type):
 
         # add k feature to current set of features
         current_set_of_features.remove(feature_to_remove_at_this_level)
-        print_best_set = {f + 1 for f in current_set_of_features}
-        if len(print_best_set) > 0:
-            logger.info(f"Feature set {print_best_set} was the best, accuracy is {best_accuracy_at_current_level:.1f}%")
-
-
-        # store for plotting
-        all_accuracies.append(best_accuracy_at_current_level)
-        feature_sets.append(current_set_of_features.copy())
-        feature_set_labels.append("{" + ",".join(str(f+1) for f in current_set_of_features) + "}" if current_set_of_features else "{}")
 
         # track best overall feature set
         if best_accuracy_at_current_level > best_overall_accuracy:
             best_overall_accuracy = best_accuracy_at_current_level
             best_overall_set_of_features = current_set_of_features.copy()
+        elif best_accuracy_at_current_level < best_overall_accuracy and i != 1:
+            logger.info("(Warning, Accuracy has decreased! Continuing search in case of local maxima)")
+
+        print_best_set = {f + 1 for f in current_set_of_features}
+        if len(print_best_set) > 0:
+            logger.info(f"Feature set {print_best_set} was the best, accuracy is {best_accuracy_at_current_level:.1f}%")
+
+        # store for plotting
+        all_accuracies.append(best_accuracy_at_current_level)
+        feature_sets.append(current_set_of_features.copy())
+        feature_set_labels.append("{" + ",".join(str(f+1) for f in current_set_of_features) + "}" if current_set_of_features else "{}")
 
     print_best_set = {f + 1 for f in best_overall_set_of_features}
     logger.info(
