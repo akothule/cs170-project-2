@@ -88,7 +88,7 @@ def create_chart(accuracy_percentages, feature_set_labels, title, xlabel, ylabel
     # higher resolution and quality
     plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"Chart saved to {filename}")
+    # print(f"Chart saved to {filename}")
 
 
 
