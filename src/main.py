@@ -144,7 +144,7 @@ def forward_selection(labels, features, dataset_type):
 
     # begin search
     logger.info(f"Running nearest neighbor with all {num_of_features} features, using \"leaving-one-out\" "
-                f"evaluation, I get an accuracy of {calculate_accuracy(leave_one_out_cross_validation(labels, features, list(range(num_of_features)), None))}%")
+                f"evaluation, I get an \naccuracy of {calculate_accuracy(leave_one_out_cross_validation(labels, features, list(range(num_of_features)), None))}%")
     logger.info(f"Beginning search.")
 
     # loop through features
@@ -163,9 +163,9 @@ def forward_selection(labels, features, dataset_type):
                 print_feature_set = {f + 1 for f in current_set_of_features}
                 print_feature_set.add(k + 1)
                 if len(print_feature_set) > 0:
-                    logger.info(f" Using feature(s) {print_feature_set}. accuracy is {accuracy:.1f}%")
+                    logger.info(f"  Using feature(s) {print_feature_set} accuracy is {accuracy:.1f}%")
                 else:
-                    logger.info(f" Using feature(s) {'{}'}. accuracy is {accuracy:.1f}%")
+                    logger.info(f"  Using feature(s) {'{}'} accuracy is {accuracy:.1f}%")
 
                 if accuracy > best_accuracy_at_current_level:
                     # update best accuracy at current level
@@ -185,7 +185,7 @@ def forward_selection(labels, features, dataset_type):
 
         if i < num_of_features - 1:
             print_best_set = {f + 1 for f in current_set_of_features}
-            logger.info(f"Feature set {print_best_set} was the best, accuracy is {best_accuracy_at_current_level:.1f}%")
+            logger.info(f"Feature set {print_best_set} was best, accuracy is {best_accuracy_at_current_level:.1f}%")
 
         # store for plotting
         all_accuracies.append(best_accuracy_at_current_level)
@@ -248,9 +248,9 @@ def backward_elimination(labels, features, dataset_type):
                 print_feature_set = {f + 1 for f in current_set_of_features}
                 print_feature_set.remove(k + 1)
                 if len(print_feature_set) > 0:
-                    logger.info(f" Using feature(s) {print_feature_set}. accuracy is {accuracy:.1f}%")
+                    logger.info(f"  Using feature(s) {print_feature_set} accuracy is {accuracy:.1f}%")
                 else:
-                    logger.info(f" Using feature(s) {'{}'}. accuracy is {accuracy:.1f}%")
+                    logger.info(f"  Using feature(s) {'{}'} accuracy is {accuracy:.1f}%")
 
                 if accuracy > best_accuracy_at_current_level:
                     # update best accuracy at current level
@@ -270,7 +270,7 @@ def backward_elimination(labels, features, dataset_type):
 
         print_best_set = {f + 1 for f in current_set_of_features}
         if len(print_best_set) > 0:
-            logger.info(f"Feature set {print_best_set} was the best, accuracy is {best_accuracy_at_current_level:.1f}%")
+            logger.info(f"Feature set {print_best_set} was best, accuracy is {best_accuracy_at_current_level:.1f}%")
 
         # store for plotting
         all_accuracies.append(best_accuracy_at_current_level)
@@ -300,36 +300,31 @@ def main():
     labels, features = None, None
 
     # choose a dataset to load
-    while True:
-        logger.info("1. Small Dataset\n2. Large Dataset")
-        # ask the user which dataset they want to load
-        choice = input("Enter the number next to the corresponding dataset you want to load: ")
+    logger.info("Welcome to Ayush Kothule's Feature Selection Algorithm.")
+    # file must be in data directory
+    dataset_file = input("Type in the name of the file to test: ")
+    dataset_file_path = "data/" + dataset_file
 
-        # load the corresponding dataset
-        if choice == '1':
-            labels, features = load_data(small_data)
-            dataset_type = 'small'
-            logger.info(f"Small dataset loaded successfully. Dataset contains {features.shape[0]} instances "
-                  f"and {features.shape[1]} features (not including the class attribute).")
-            break
-        elif choice == '2':
-            labels, features = load_data(large_data)
-            dataset_type = 'large'
-            logger.info(f"Large dataset loaded successfully. Dataset contains {features.shape[0]} instances "
-                  f"and {features.shape[1]} features (not including the class attribute).")
-            break
-        else:
-            # ask again for user input if invalid
-            logger.info("Invalid Input. Please enter 1 or 2 depending on which dataset you want to load.\n")
+    # for exporting to csv and creating chart
+    if "small" in dataset_file_path.lower():
+        dataset_type = 'small'
+    elif "large" in dataset_file_path.lower():
+        dataset_type = 'large'
+    else:
+        dataset_type = ''
+
+    # load data
+    labels, features = load_data(dataset_file_path)
+    logger.info(f"This dataset has {features.shape[1]} features (not including the class attribute), with {features.shape[0]} instances.")
 
     # time stamp for calculating duration of runtime
     start_time = time.time()
 
     # choose which kind of search. forward or backward
     while True:
-        logger.info("1. Forward Selection\n2. Backward Elimination")
-        # ask user which feature search they want to use
-        choice = input("Enter the number next to the corresponding feature search you want to use: ")
+        logger.info("Type the number of the algorithm you want to run.")
+        logger.info("  1) Forward Selection\n  2) Backward Elimination")
+        choice = input("")
 
         start_time = time.time()
         # execute corresponding search
