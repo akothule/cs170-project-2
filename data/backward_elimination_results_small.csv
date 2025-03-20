@@ -1,0 +1,9 @@
+# Accuracy of increasingly small subsets of features discovered by backward elimination
+Feature Set,Accuracy (%)
+"{1,2,3,4,5,6}",87.4
+"{1,2,4,5,6}",88.0
+"{2,4,5,6}",91.4
+"{2,4,5}",95.19999999999999
+"{2,4}",97.8
+{2},81.6
+{},81.8

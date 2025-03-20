@@ -229,7 +229,7 @@ def backward_elimination(labels, features, dataset_type):
 
     # begin search
     logger.info(f"Running nearest neighbor with no features, using \"leaving-one-out\" "
-                f"evaluation, I get an accuracy of {calculate_accuracy(leave_one_out_cross_validation(labels, features, list(), None))}%")
+                f"evaluation, I get an \naccuracy of {calculate_accuracy(leave_one_out_cross_validation(labels, features, list(), None))}%")
     logger.info(f"Beginning search.")
 
     # loop backwards through search tree
